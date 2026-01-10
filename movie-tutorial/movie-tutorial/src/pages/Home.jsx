@@ -1,5 +1,9 @@
 import MovieCard from "../components/MovieCard";
 import { useState } from "react";
+import "../css/Home.css";
+import { searchMovies } from "../services/api";
+import { getPopularMovies } from "../services/api";
+import { useEffect } from "react";
 
 function Home() {
   // searchQuery: the current text in the box.
@@ -8,17 +12,42 @@ function Home() {
 
   // This is a "list" (array) of data objects.
   // In a real app, this would eventually come from a website like Netflix or TMDB.
-  const movies = [
-    { id: 1, title: "Barbie", release_date: "2023" },
-    { id: 2, title: "SuperWoman", release_date: "2022" },
-    { id: 3, title: "Armageddon", release_date: "2021" },
-    { id: 4, title: "Inception", release_date: "2025" },
-  ];
+  const [movies, setMovies] = useState([]);
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadPopularMovies = async () => {
+      try {
+        const popularMovies = await getPopularMovies();
+        setMovies(popularMovies);
+      } catch (error) {
+        console.log(error);
+        setError("Failed to load popular movies...");
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadPopularMovies();
+  }, []);
 
   // This function runs when someone clicks the search button or presses Enter
-  const handleSearch = (e) => {
+  const handleSearch = async (e) => {
     e.preventDefault();
-    alert("Searching for: " + searchQuery);
+    if (!searchQuery.trim()) return;
+    if (loading) return;
+    setLoading(true);
+    try{
+        const searchResults = await searchMovies(searchQuery);
+        setMovies(searchResults);
+        setError(null);
+
+    }catch(error){
+      console.log(error);
+      setError("Failed to search movies...");
+    }finally{
+      setLoading(false);
+    }
   };
 
   return (
@@ -33,14 +62,18 @@ function Home() {
         />
         <button type="submit" className="search-button"></button>
       </form>
+
+      {error && <div className="error-message">{error}</div>}
+      {loading ? <div className="loading">Loading...</div> :
+
       <div className="movies-grid">
         {movies.map(
           (movie) =>
-            movie.title.toLowerCase().startsWith(searchQuery) && (
+            movie.title.toLowerCase().startsWith(searchQuery.toLowerCase()) && (
               <MovieCard movie={movie} key={movie.id} />
             )
         )}
-      </div>
+      </div>}
     </div>
   );
 }
